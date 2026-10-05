@@ -1,0 +1,118 @@
+import 'package:flutter/material.dart';
+import '../../../models/department_model.dart';
+import '../../../services/department_service.dart';
+import '../../../core/constants/app_strings.dart';
+import '../../../core/constants/app_colors.dart';
+import '../../../core/widgets/custom_text_field.dart';
+import '../../../core/widgets/custom_button.dart';
+import '../../../core/utils/validators.dart';
+import '../../../core/utils/helpers.dart';
+import 'package:uuid/uuid.dart';
+
+class AddDepartmentScreen extends StatefulWidget {
+  const AddDepartmentScreen({super.key});
+
+  @override
+  State<AddDepartmentScreen> createState() => _AddDepartmentScreenState();
+}
+
+class _AddDepartmentScreenState extends State<AddDepartmentScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _nameCtrl = TextEditingController();
+  final _descCtrl = TextEditingController();
+  final _managerCtrl = TextEditingController();
+  final _deptService = DepartmentService();
+  bool _loading = false;
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _descCtrl.dispose();
+    _managerCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _loading = true);
+    try {
+      final now = DateTime.now();
+      final id = const Uuid().v4();
+      final dept = DepartmentModel(
+        id: '',
+        departmentId: id,
+        name: _nameCtrl.text.trim(),
+        description: _descCtrl.text.trim(),
+        manager: _managerCtrl.text.trim(),
+        createdAt: now,
+        updatedAt: now,
+      );
+      await _deptService.addDepartment(dept);
+      if (!mounted) return;
+      AppHelpers.showSnackBar(context, 'Department added successfully!', isSuccess: true);
+      Navigator.pop(context, true);
+    } catch (e) {
+      if (!mounted) return;
+      AppHelpers.showSnackBar(context, 'Error: ${e.toString()}', isError: true);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: const Text(AppStrings.addDepartment),
+        backgroundColor: AppColors.surface,
+      ),
+      body: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Container(
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: AppColors.cardShadow,
+            ),
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text('Department Details',
+                    style: Theme.of(context).textTheme.titleLarge),
+                const Divider(height: 24),
+                CustomTextField(
+                  label: AppStrings.departmentName,
+                  controller: _nameCtrl,
+                  validator: (v) => Validators.minLength(v, 2, 'Department Name'),
+                ),
+                const SizedBox(height: 16),
+                CustomTextField(
+                  label: AppStrings.description,
+                  controller: _descCtrl,
+                  maxLines: 3,
+                ),
+                const SizedBox(height: 16),
+                CustomTextField(
+                  label: AppStrings.manager,
+                  hint: 'Manager name (optional)',
+                  controller: _managerCtrl,
+                ),
+                const SizedBox(height: 28),
+                CustomButton(
+                  label: 'Create Department',
+                  onPressed: _submit,
+                  isLoading: _loading,
+                  icon: Icons.add_business_rounded,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
